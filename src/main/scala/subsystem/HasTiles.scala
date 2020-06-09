@@ -109,8 +109,13 @@ trait HasTileNotificationSinks { this: LazyModule =>
 trait HasTiles extends HasCoreMonitorBundles with DefaultTileContextType
 { this: BaseSubsystem => // TODO: ideally this bound would be softened to Attachable
   implicit val p: Parameters
-  val tileAttachParams: Seq[CanAttachTile] = p(TilesLocated(location))
-  val tiles: Seq[BaseTile] = tileAttachParams.map(_.instantiate(p)) // actual tile creation
+
+  // Actually instantiate all tiles, in order based on statically-assigned hartids
+  val tileAttachParams: Seq[CanAttachTile] = p(TilesLocated(location)).sortBy(_.tileParams.hartId)
+  val tiles: Seq[BaseTile] = tileAttachParams.map(_.instantiate(p))
+  require(hartIdList.distinct.size == tiles.size, s"Every tile must be statically assigned a unique id, but got:\n${hartIdList}")
+
+  // Helper functions for accessing certain parameters the are popular to refer to in subsystem code
   val tileParams: Seq[TileParams] = tiles.map(_.tileParams)
   val tileCrossingTypes = tileAttachParams.map(_.crossingParams.crossingType)
   def nTiles: Int = tileParams.size
